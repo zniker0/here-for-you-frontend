@@ -261,21 +261,37 @@
             if (bookingId) {
                 document.getElementById('bookingId').textContent = bookingId;
                 
-                // Load booking details from localStorage
-                const bookings = JSON.parse(localStorage.getItem('userBookings')) || [];
-                const booking = bookings.find(b => b.id === bookingId);
-                
-                if (booking) {
-                    document.getElementById('bookingDateTime').textContent = 
-                        `January ${booking.date}, 2024 at ${booking.time}`;
-                    document.getElementById('bookingService').textContent = booking.service;
-                    document.getElementById('bookingProfessional').textContent = booking.professional;
-                    document.getElementById('bookingAddress').textContent = booking.address || '123 Main Street, Kochi, Kerala';
-                    document.getElementById('bookingPayment').textContent = 
-                        booking.paymentMethod === 'cash' ? 'Cash After Service' : 
-                        booking.paymentMethod === 'upi' ? 'UPI Payment' :
-                        booking.paymentMethod === 'card' ? 'Credit/Debit Card' : 'Digital Wallet';
-                }
+                // Load booking details from API
+                getUserBookings()
+                .then(bookings => {
+                    const booking = bookings.find(b => b.booking_id === bookingId);
+                    
+                    if (booking) {
+                        const bookingDate = new Date(booking.booking_date);
+                        document.getElementById('bookingDateTime').textContent = 
+                            `${bookingDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })} at ${booking.booking_time}`;
+                        document.getElementById('bookingService').textContent = booking.service_type || 'Service';
+                        document.getElementById('bookingProfessional').textContent = 'Professional'; // API doesn't return professional name
+                        document.getElementById('bookingAddress').textContent = booking.full_address || 'Address not available';
+                        document.getElementById('bookingPayment').textContent = 'Cash After Service'; // Default payment method
+                    } else {
+                        // Show default values if booking not found
+                        document.getElementById('bookingDateTime').textContent = 'Booking details loading...';
+                        document.getElementById('bookingService').textContent = 'Service';
+                        document.getElementById('bookingProfessional').textContent = 'Professional';
+                        document.getElementById('bookingAddress').textContent = 'Address';
+                        document.getElementById('bookingPayment').textContent = 'Cash After Service';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading booking details:', error);
+                    // Show default values on error
+                    document.getElementById('bookingDateTime').textContent = 'Error loading booking details';
+                    document.getElementById('bookingService').textContent = 'Service';
+                    document.getElementById('bookingProfessional').textContent = 'Professional';
+                    document.getElementById('bookingAddress').textContent = 'Address';
+                    document.getElementById('bookingPayment').textContent = 'Cash After Service';
+                });
             }
         }
         

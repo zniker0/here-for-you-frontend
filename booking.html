@@ -299,30 +299,54 @@
             
             // Collect form data
             const formData = new FormData(document.getElementById('bookingForm'));
+            const urlParams = new URLSearchParams(window.location.search);
+            const professionalId = urlParams.get('professional');
+            
+            if (!professionalId) {
+                showNotification('Professional ID not found', 'error');
+                return;
+            }
+            
+            // Prepare booking data for API
+            const selectedDateTime = `${selectedDate.dataset.date}T${selectedTime.textContent}:00`;
             const bookingData = {
-                id: 'BK' + Date.now(),
-                date: selectedDate.textContent,
-                time: selectedTime.textContent,
-                status: 'confirmed',
-                professional: 'Suresh Kumar',
-                service: 'Plumbing',
-                address: formData.get('address'),
-                serviceType: formData.get('serviceType'),
-                paymentMethod: formData.get('paymentMethod'),
-                createdAt: new Date().toISOString()
+                professional_id: professionalId,
+                dates_and_times: [selectedDateTime],
+                full_address: formData.get('address'),
+                booking_date: selectedDate.dataset.date,
+                booking_time: selectedTime.textContent,
+                pin_code: formData.get('pincode'),
+                city: formData.get('city'),
+                service_type: formData.get('serviceType'),
+                problem_description: formData.get('description'),
+                urgency_level: formData.get('urgency'),
+                user_name: formData.get('contactName'),
+                user_phone: formData.get('contactPhone'),
+                user_alternative_phone: formData.get('alternateContact'),
+                special_instructions: formData.get('instructions')
             };
             
-            // Save booking
-            const existingBookings = JSON.parse(localStorage.getItem('userBookings')) || [];
-            existingBookings.push(bookingData);
-            localStorage.setItem('userBookings', JSON.stringify(existingBookings));
+            // Show loading state
+            const submitButton = document.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML = '<div class="loading"></div> Booking...';
+            submitButton.disabled = true;
             
-            showNotification('Booking confirmed successfully!');
-            
-            // Redirect to confirmation page
-            setTimeout(() => {
-                window.location.href = `booking-confirmation.html?id=${bookingData.id}`;
-            }, 1500);
+            // Call API to create booking
+            createBooking(bookingData)
+            .then(response => {
+                showNotification('Booking confirmed successfully!');
+                setTimeout(() => {
+                    window.location.href = `booking-confirmation.html?id=${response.booking_id}`;
+                }, 1500);
+            })
+            .catch(error => {
+                showNotification(error.message, 'error');
+            })
+            .finally(() => {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            });
         }
         
         function updateBookingSummary() {
