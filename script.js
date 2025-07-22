@@ -1,5 +1,5 @@
 // Application State - Fixed button functionality
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'https://localhost:5000';
 let currentUser = null;
 let currentBooking = null;
 let selectedService = null;
