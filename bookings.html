@@ -131,70 +131,33 @@
         let allBookings = [];
         let currentFilter = 'all';
         
-        // Mock booking data
-        const mockBookings = [
-            {
-                id: 'BK1234567890',
-                service: 'Plumbing',
-                serviceType: 'Pipe Repair',
-                professional: 'Suresh Kumar',
-                date: '15',
-                time: '10:00 AM',
-                status: 'upcoming',
-                address: '123 Main Street, Kochi',
-                cost: '₹450',
-                paymentMethod: 'Cash After Service',
-                createdAt: '2024-01-10T10:00:00Z',
+        // Transform API booking data to match UI expectations
+        function transformBookingData(apiBooking) {
+            return {
+                id: apiBooking.booking_id,
+                service: apiBooking.service_type || 'Service',
+                serviceType: apiBooking.service_type || 'General Service',
+                professional: 'Professional', // API doesn't return professional name
+                date: new Date(apiBooking.booking_date).getDate().toString(),
+                time: apiBooking.booking_time,
+                status: apiBooking.booking_status === 'pending' ? 'upcoming' : apiBooking.booking_status,
+                address: apiBooking.full_address,
+                cost: '₹300-500', // Mock cost since not in API
+                paymentMethod: 'Cash After Service', // Mock payment method
+                createdAt: apiBooking.booking_date,
                 rating: null
-            },
-            {
-                id: 'BK1234567891',
-                service: 'AC Repair',
-                serviceType: 'AC Service',
-                professional: 'Renjini Devi',
-                date: '12',
-                time: '02:00 PM',
-                status: 'completed',
-                address: '456 Park Avenue, Kochi',
-                cost: '₹800',
-                paymentMethod: 'UPI Payment',
-                createdAt: '2024-01-08T14:00:00Z',
-                rating: 5
-            },
-            {
-                id: 'BK1234567892',
-                service: 'House Cleaning',
-                serviceType: 'Deep Cleaning',
-                professional: 'Meera Kumari',
-                date: '20',
-                time: '09:00 AM',
-                status: 'upcoming',
-                address: '789 Garden Road, Kochi',
-                cost: '₹600',
-                paymentMethod: 'Credit Card',
-                createdAt: '2024-01-12T09:00:00Z',
-                rating: null
-            },
-            {
-                id: 'BK1234567893',
-                service: 'Electrical',
-                serviceType: 'Wiring Repair',
-                professional: 'Anil Kumar',
-                date: '05',
-                time: '11:00 AM',
-                status: 'cancelled',
-                address: '321 Beach Road, Kochi',
-                cost: '₹350',
-                paymentMethod: 'Cash After Service',
-                createdAt: '2024-01-03T11:00:00Z',
-                rating: null
-            }
-        ];
+            };
+        }
         
-        document.addEventListener('DOMContentLoaded', function() {
-            // Load bookings from localStorage or use mock data
-            const savedBookings = JSON.parse(localStorage.getItem('userBookings')) || [];
-            allBookings = [...savedBookings, ...mockBookings];
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Load bookings from API
+            try {
+                const apiBookings = await getUserBookings();
+                allBookings = apiBookings.map(transformBookingData);
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                allBookings = [];
+            }
             
             renderBookings();
         });

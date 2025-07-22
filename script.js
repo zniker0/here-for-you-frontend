@@ -1,8 +1,127 @@
 // Application State - Fixed button functionality
+const API_BASE_URL = 'http://localhost:5000';
 let currentUser = null;
 let currentBooking = null;
 let selectedService = null;
 let selectedProfessional = null;
+
+// API Helper Functions
+async function apiRequest(endpoint, options = {}) {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Include cookies for session management
+    };
+    
+    const config = { ...defaultOptions, ...options };
+    
+    try {
+        const response = await fetch(url, config);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API request failed:', error);
+        throw error;
+    }
+}
+
+// Authentication API Functions
+async function loginUser(email, password) {
+    try {
+        const response = await apiRequest('/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password })
+        });
+        
+        // Store user info locally
+        const userData = {
+            email: response.user.email,
+            name: response.user.email.split('@')[0], // Use email prefix as name
+            isLoggedIn: true
+        };
+        
+        setCurrentUser(userData);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function registerUser(fullname, email, password, phone) {
+    try {
+        const response = await apiRequest('/register', {
+            method: 'POST',
+            body: JSON.stringify({ fullname, email, password, phone })
+        });
+        
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function registerProfessional(professionalData) {
+    try {
+        const response = await apiRequest('/register_professional', {
+            method: 'POST',
+            body: JSON.stringify(professionalData)
+        });
+        
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getProfessionals(serviceProvided, city) {
+    try {
+        const response = await apiRequest('/get_professionals', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                service_provided: serviceProvided, 
+                city: city.toLowerCase() 
+            })
+        });
+        
+        return response.professionals || [];
+    } catch (error) {
+        console.error('Error fetching professionals:', error);
+        return [];
+    }
+}
+
+async function createBooking(bookingData) {
+    try {
+        const response = await apiRequest('/booking', {
+            method: 'POST',
+            body: JSON.stringify(bookingData)
+        });
+        
+        return response;
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function getUserBookings() {
+    try {
+        const response = await apiRequest('/list_bookings', {
+            method: 'POST'
+        });
+        
+        return response.bookings || [];
+    } catch (error) {
+        console.error('Error fetching bookings:', error);
+        return [];
+    }
+}
 
 // Service Categories Data
 const services = [
@@ -24,63 +143,47 @@ const services = [
     { id: 'tailoring', name: 'Tailoring', icon: 'fas fa-cut', description: 'Stitching, alterations, repairs' }
 ];
 
-// Mock Professionals Data
-const professionals = {
-    'plumbing': [
-        {
-            id: 'p1',
-            name: 'Suresh Kumar',
-            rating: 4.8,
-            reviews: 156,
-            experience: '8 years',
-            hourlyRate: '₹300/hour',
-            location: 'Kakkanad, Kochi',
-            verified: true,
-            availability: ['2024-01-15', '2024-01-16', '2024-01-17'],
-            specialties: ['Pipe repairs', 'Bathroom fittings', 'Water heater service']
-        },
-        {
-            id: 'p2',
-            name: 'Anil Nair',
-            rating: 4.6,
-            reviews: 89,
-            experience: '5 years',
-            hourlyRate: '₹250/hour',
-            location: 'Ernakulam, Kochi',
-            verified: true,
-            availability: ['2024-01-15', '2024-01-16'],
-            specialties: ['Drainage cleaning', 'Tap repairs', 'Pipeline installation']
-        }
-    ],
-    'ac-repair': [
-        {
-            id: 'a1',
-            name: 'Renjini Devi',
-            rating: 4.9,
-            reviews: 203,
-            experience: '10 years',
-            hourlyRate: '₹400/hour',
-            location: 'Vazhuthacaud, Thiruvananthapuram',
-            verified: true,
-            availability: ['2024-01-15', '2024-01-17'],
-            specialties: ['Split AC service', 'Window AC repair', 'Installation']
-        }
-    ],
-    'maid': [
-        {
-            id: 'm1',
-            name: 'Meera Kumari',
-            rating: 4.7,
-            reviews: 134,
-            experience: '6 years',
-            hourlyRate: '₹200/hour',
-            location: 'Palarivattom, Kochi',
-            verified: true,
-            availability: ['2024-01-15', '2024-01-16', '2024-01-17'],
-            specialties: ['House cleaning', 'Cooking', 'Laundry']
-        }
-    ]
+// Service mapping for API
+const serviceMapping = {
+    'plumbing': 'plumbing',
+    'ac-repair': 'ac repair',
+    'car-repair': 'car repair',
+    'appliance-repair': 'appliance repair',
+    'electrical': 'electrical',
+    'caretaker': 'caretaker',
+    'maid': 'house cleaning',
+    'cook': 'cooking',
+    'gardening': 'gardening',
+    'home-cleaning': 'house cleaning',
+    'car-cleaning': 'car cleaning',
+    'pest-control': 'pest control',
+    'laundry': 'laundry',
+    'healthcare': 'healthcare',
+    'babysitting': 'babysitting',
+    'tailoring': 'tailoring'
 };
+
+// Transform API professional data to match UI expectations
+function transformProfessionalData(apiProfessional) {
+    return {
+        id: apiProfessional.professional_id,
+        name: `${apiProfessional.first_name} ${apiProfessional.last_name}`,
+        rating: 4.5 + Math.random() * 0.5, // Mock rating since not in API
+        reviews: Math.floor(Math.random() * 200) + 50, // Mock reviews
+        experience: `${apiProfessional.years_of_experience} years`,
+        hourlyRate: `₹${apiProfessional.hourly_rate}/hour`,
+        location: `${apiProfessional.city}`,
+        verified: true,
+        availability: ['2024-01-15', '2024-01-16', '2024-01-17'], // Mock availability
+        specialties: Array.isArray(apiProfessional.service_provided) 
+            ? apiProfessional.service_provided 
+            : [apiProfessional.service_provided],
+        email: apiProfessional.email,
+        phone: apiProfessional.phone,
+        address: apiProfessional.address,
+        description: apiProfessional.service_description
+    };
+}
 
 // Utility Functions
 function showNotification(message, type = 'success') {
@@ -179,11 +282,84 @@ function selectService(serviceId) {
 }
 
 // Professional Functions
-function renderProfessionals(serviceId) {
+async function renderProfessionals(serviceId) {
     const professionalsList = document.getElementById('professionalsList');
     if (!professionalsList) return;
     
-    const serviceProfessionals = professionals[serviceId] || [];
+    // Show loading state
+    professionalsList.innerHTML = '<div class="loading-state">Loading professionals...</div>';
+    
+    try {
+        const serviceProvided = serviceMapping[serviceId] || serviceId;
+        const city = document.getElementById('locationDisplay')?.textContent || 'Kochi';
+        
+        const apiProfessionals = await getProfessionals(serviceProvided, city);
+        const serviceProfessionals = apiProfessionals.map(transformProfessionalData);
+        
+        if (serviceProfessionals.length === 0) {
+            professionalsList.innerHTML = `
+                <div class="text-center p-3">
+                    <p>No professionals available for this service in your area.</p>
+                    <button class="btn-primary" onclick="window.location.href='become-helper.html'">
+                        Become a Helper
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        professionalsList.innerHTML = serviceProfessionals.map(prof => `
+            <div class="professional-card">
+                <div class="professional-header">
+                    <div class="professional-avatar">
+                        ${getInitials(prof.name)}
+                    </div>
+                    <div class="professional-info">
+                        <h3>${prof.name}</h3>
+                        <p>${prof.location}</p>
+                        ${prof.verified ? '<span class="verified-badge">KYC Verified</span>' : ''}
+                    </div>
+                </div>
+                <div class="professional-details">
+                    <div class="rating">
+                        <div class="stars">
+                            ${'★'.repeat(Math.floor(prof.rating))}${'☆'.repeat(5 - Math.floor(prof.rating))}
+                        </div>
+                        <span>${prof.rating.toFixed(1)} (${prof.reviews} reviews)</span>
+                    </div>
+                    <p><strong>Experience:</strong> ${prof.experience}</p>
+                    <p><strong>Rate:</strong> ${prof.hourlyRate}</p>
+                    <p><strong>Specialties:</strong> ${prof.specialties.join(', ')}</p>
+                </div>
+                <div class="professional-actions">
+                    <button class="btn-outline" onclick="viewProfile('${prof.id}', '${serviceId}')">
+                        View Profile
+                    </button>
+                    <button class="btn-primary" onclick="bookNow('${prof.id}', '${serviceId}')">
+                        Book Now
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        professionalsList.innerHTML = `
+            <div class="error-state">
+                <p>Error loading professionals: ${error.message}</p>
+                <button class="btn-primary" onclick="renderProfessionals('${serviceId}')">
+                    Try Again
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Update the old renderProfessionals function calls
+function renderProfessionalsOld(serviceId) {
+    const professionalsList = document.getElementById('professionalsList');
+    if (!professionalsList) return;
+    
+    const serviceProfessionals = [];
     
     if (serviceProfessionals.length === 0) {
         professionalsList.innerHTML = `
@@ -253,7 +429,64 @@ function chatWithProfessional() {
 function bookProfessional() {
 }
 // Booking Functions
-function renderBookingCalendar() {
+async function handleBookingSubmission() {
+    const selectedDate = document.querySelector('.calendar-day.selected');
+    const selectedTime = document.querySelector('.time-slot.selected');
+    
+    if (!selectedDate || !selectedTime) {
+        showNotification('Please select date and time', 'error');
+        return;
+    }
+    
+    if (!document.getElementById('agreeTerms').checked) {
+        showNotification('Please agree to terms and conditions', 'error');
+        return;
+    }
+    
+    // Collect form data
+    const formData = new FormData(document.getElementById('bookingForm'));
+    const urlParams = new URLSearchParams(window.location.search);
+    const professionalId = urlParams.get('professional');
+    
+    const bookingData = {
+        professional_id: professionalId,
+        dates_and_times: [`${selectedDate.dataset.date}T${selectedTime.textContent}`],
+        full_address: formData.get('address'),
+        booking_date: selectedDate.dataset.date,
+        booking_time: selectedTime.textContent,
+        pin_code: formData.get('pincode'),
+        city: formData.get('city'),
+        service_type: formData.get('serviceType'),
+        problem_description: formData.get('description'),
+        urgency_level: formData.get('urgency'),
+        user_name: formData.get('contactName'),
+        user_phone: formData.get('contactPhone'),
+        user_alternative_phone: formData.get('alternateContact'),
+        special_instructions: formData.get('instructions')
+    };
+    
+    // Show loading state
+    const submitButton = document.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.innerHTML = '<div class="loading"></div> Booking...';
+    submitButton.disabled = true;
+    
+    try {
+        const response = await createBooking(bookingData);
+        showNotification('Booking confirmed successfully!');
+        
+        setTimeout(() => {
+            window.location.href = `booking-confirmation.html?id=${response.booking_id}`;
+        }, 1500);
+        
+    } catch (error) {
+        showNotification(error.message, 'error');
+        submitButton.innerHTML = originalText;
+        submitButton.disabled = false;
+    }
+}
+
+function renderBookingCalendarOld() {
     const calendarContainer = document.getElementById('calendarContainer');
     if (!calendarContainer) return;
     
@@ -285,6 +518,7 @@ function selectDate(dateStr) {
     
     // Add selection to clicked date
     event.target.classList.add('selected');
+    event.target.dataset.date = dateStr;
     
     // Render available time slots
     renderTimeSlots(dateStr);
@@ -544,11 +778,160 @@ function initializeLogin() {
     loginForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        
+        // Basic validation  
+        if (!validateEmail(email) && !validatePhone(email)) {
+            showNotification('Please enter a valid email or phone number', 'error');
+            return;
+        }
+        
+        if (!validatePassword(password)) {
+            showNotification('Password must be at least 8 characters', 'error');
+            return;
+        }
+        
+        // Show loading state
+        const submitButton = document.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.innerHTML = '<div class="loading"></div> Signing in...';
+        submitButton.disabled = true;
+        
+        // API authentication
+        loginUser(email, password)
+        .then(response => {
+            showNotification('Login successful!');
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1000);
+        })
+        .catch(error => {
+            showNotification(error.message, 'error');
+        })
+        .finally(() => {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        });
+    });
+}
+
+function initializeSignup() {
+    const signupForm = document.getElementById('signupForm');
+    if (!signupForm) return;
+    
+    signupForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        
+        // Validation
+        if (!name.trim()) {
+            showNotification('Please enter your name', 'error');
+            return;
+        }
+        
+        if (!validateEmail(email)) {
+            showNotification('Please enter a valid email', 'error');
+            return;
+        }
+        
+        if (!validatePhone(phone)) {
+            showNotification('Please enter a valid phone number', 'error');
+            return;
+        }
+        
+        if (!validatePassword(password)) {
+            showNotification('Password must be at least 8 characters', 'error');
+            return;
+        }
+        
+        if (password !== confirmPassword) {
+            showNotification('Passwords do not match', 'error');
+            return;
+        }
+        
+        // Show loading state
+        const submitButton = document.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.innerHTML = '<div class="loading"></div> Creating account...';
+        submitButton.disabled = true;
+        
+        // API registration
+        registerUser(name, email, password, phone)
+        .then(response => {
+            showNotification('Registration successful! Please login now.');
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 1500);
+        })
+        .catch(error => {
+            showNotification(error.message, 'error');
+        })
+        .finally(() => {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        });
+    });
+}
+
+// Update initializeDashboard to load real bookings
+async function initializeDashboard() {
+    const user = getCurrentUser();
+    if (!user) {
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    document.getElementById('userWelcome').textContent = `Welcome back, ${user.name}!`;
+    renderDashboardServices();
+    await renderRecentBookings();
+}
+
+async function renderRecentBookings() {
+    const bookingsContainer = document.getElementById('recentBookings');
+    if (!bookingsContainer) return;
+    
+    try {
+        const bookings = await getUserBookings();
+        
+        if (bookings.length === 0) {
+            bookingsContainer.innerHTML = '<p>No bookings yet. Book your first service!</p>';
+            return;
+        }
+        
+        bookingsContainer.innerHTML = bookings.slice(-3).map(booking => `
+            <div class="booking-card">
+                <h4>Booking #${booking.booking_id}</h4>
+                <p>Date: ${booking.booking_date}</p>
+                <p>Time: ${booking.booking_time}</p>
+                <p>Status: <span class="status ${booking.booking_status}">${booking.booking_status}</span></p>
+                <p>Service: ${booking.service_type}</p>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        bookingsContainer.innerHTML = '<p>Error loading bookings. Please try again later.</p>';
+    }
+}
+
+// Update the old initializeLogin function
+function initializeLoginOld() {
+    const loginForm = document.getElementById('loginForm');
+    if (!loginForm) return;
+    
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         
         // Basic validation
-        if (!validateEmail(email) && !validatePhone(phone)) {
+        if (!validateEmail(email) && !validatePhone(email)) {
             showNotification('Please enter a valid email or phone number', 'error');
             return;
         }
@@ -562,7 +945,7 @@ function initializeLogin() {
         const user = {
             email: email,
             name: email.includes('@') ? email.split('@')[0] : 'User',
-            phone: phone
+            phone: ''
         };
         
         setCurrentUser(user);
@@ -573,7 +956,7 @@ function initializeLogin() {
     });
 }
 
-function initializeSignup() {
+function initializeSignupOld() {
     const signupForm = document.getElementById('signupForm');
     if (!signupForm) return;
     

@@ -196,36 +196,6 @@
     </script>
 
     <!-- Add this signup form handling script -->
-    <script>
-      document.getElementById('signupForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const name = document.getElementById('name').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (password !== confirmPassword) {
-          alert('Passwords do not match!');
-          return;
-        }
-
-        const user = {
-          name,
-          email,
-          phone,
-          password,
-          membership: "Standard",
-          profilePicUrl: "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-        };
-
-        localStorage.setItem('hereForYouUser', JSON.stringify(user));
-
-        alert('Signup successful! Please login now.');
-
-        window.location.href = 'login.html';
-      });
-    </script>
+    <!-- Signup form handling is now in script.js initializeSignup function -->
 </body>
 </html>

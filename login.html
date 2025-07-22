@@ -129,28 +129,7 @@
       showNotification("OTP login will be available soon");
     }
 
-    // Save login data and redirect to profile page
-    document.getElementById("loginForm").addEventListener("submit", function (e) {
-      e.preventDefault(); // prevent form submit refresh
-
-      const email = document.getElementById("email").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      const userData = {
-        name: email.split('@')[0] || "User", // Use email prefix as name
-        email: email,
-        phone: Phone,
-        membership: "", // <-- EMPTY to NOT show membership on profile
-        profilePicUrl: "https://cdn-icons-png.flaticon.com/512/847/847969.png", // use blank for now
-      };
-
-      // Save user info
-      localStorage.setItem("hereForYouUser", JSON.stringify(userData));
-
-      // Go to profile page
-      window.location.href = "profile.html";
-    });
+    // Login form handling is now in script.js initializeLogin function
   </script>
 </body>
 </html>

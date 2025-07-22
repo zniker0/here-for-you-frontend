@@ -509,11 +509,13 @@
             // Validate required fields
             const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'gender', 'address', 'city', 'pincode', 'experience', 'bankName', 'accountNumber', 'ifscCode', 'accountHolderName'];
             
+            const formData = new FormData(document.getElementById('helperRegistrationForm'));
+            
             for (const field of requiredFields) {
-                const element = document.getElementById(field);
-                if (!element.value.trim()) {
+                const value = formData.get(field) || document.getElementById(field)?.value;
+                if (!value || !value.trim()) {
                     showNotification(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`, 'error');
-                    element.focus();
+                    document.getElementById(field)?.focus();
                     return;
                 }
             }
@@ -550,27 +552,57 @@
                 return;
             }
             
-            // Simulate form submission
+            // Prepare professional data for API
+            const services = Array.from(selectedServices).map(s => s.value).join(', ');
+            
+            const professionalData = {
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                first_name: formData.get('firstName'),
+                last_name: formData.get('lastName'),
+                phone_number: formData.get('phone'),
+                date_of_birth: formData.get('dateOfBirth'),
+                gender: formData.get('gender'),
+                address: formData.get('address'),
+                city: formData.get('city').toLowerCase(),
+                pincode: formData.get('pincode'),
+                service_provided: services,
+                years_of_experience: parseInt(formData.get('experience').split('-')[0]) || 1,
+                hourly_rate: parseInt(formData.get('hourlyRate')) || 300,
+                service_description: formData.get('description') || 'Professional service provider',
+                bank_account_no: formData.get('accountNumber'),
+                bank_name: formData.get('bankName'),
+                ifs_code: formData.get('ifscCode'),
+                account_holder_name: formData.get('accountHolderName')
+            };
+            
+            // Submit to API
             const submitButton = document.querySelector('button[type="submit"]');
             const originalText = submitButton.innerHTML;
             submitButton.innerHTML = '<div class="loading"></div> Submitting...';
             submitButton.disabled = true;
             
-            setTimeout(() => {
+            // Use the registerProfessional API function
+            registerProfessional(professionalData)
+            .then(response => {
                 showNotification('Application submitted successfully! You will receive an email within 24-48 hours.');
                 
                 // Reset form
                 document.getElementById('helperRegistrationForm').reset();
                 resetFileUploads();
                 
+                // Redirect to success page
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 2000);
+            })
+            .catch(error => {
+                showNotification(error.message, 'error');
+            })
+            .finally(() => {
                 submitButton.innerHTML = originalText;
                 submitButton.disabled = false;
-                
-                // Redirect to success page or dashboard
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 2000);
-            }, 3000);
+            });
         }
         
         function setupFileUploads() {

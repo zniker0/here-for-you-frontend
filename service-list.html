@@ -180,14 +180,124 @@
         }
         
         // Enhanced professional card rendering with actions
-        function renderProfessionals(serviceId) {
+        async function renderProfessionals(serviceId) {
             const professionalsList = document.getElementById('professionalsList');
             const resultCount = document.getElementById('resultCount');
             const noResults = document.getElementById('noResults');
             
             if (!professionalsList) return;
             
-            const serviceProfessionals = professionals[serviceId] || [];
+            // Show loading state
+            professionalsList.innerHTML = '<div class="loading-state">Loading professionals...</div>';
+            
+            try {
+                const serviceProvided = serviceMapping[serviceId] || serviceId;
+                const city = document.getElementById('locationDisplay')?.textContent || 'Kochi';
+                
+                const apiProfessionals = await getProfessionals(serviceProvided, city);
+                const serviceProfessionals = apiProfessionals.map(transformProfessionalData);
+                
+                if (serviceProfessionals.length === 0) {
+                    professionalsList.style.display = 'none';
+                    noResults.style.display = 'block';
+                    resultCount.textContent = 'Found 0 professionals';
+                    return;
+                }
+                
+                professionalsList.style.display = 'grid';
+                noResults.style.display = 'none';
+                resultCount.textContent = `Found ${serviceProfessionals.length} professionals`;
+                
+                professionalsList.innerHTML = serviceProfessionals.map(prof => `
+                    <div class="professional-card">
+                        <div class="professional-header">
+                            <div class="professional-avatar">
+                                ${getInitials(prof.name)}
+                            </div>
+                            <div class="professional-info">
+                                <h3>${prof.name}</h3>
+                                <p>${prof.location}</p>
+                                ${prof.verified ? '<span class="verified-badge"><i class="fas fa-check-circle"></i> KYC Verified</span>' : ''}
+                            </div>
+                            <div class="professional-actions-quick">
+                                <button class="btn-icon" onclick="saveProfessional('${prof.id}')" title="Save Helper">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                                <button class="btn-icon" onclick="shareProfessional('${prof.id}')" title="Share">
+                                    <i class="fas fa-share"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="professional-details">
+                            <div class="rating">
+                                <div class="stars">
+                                    ${'★'.repeat(Math.floor(prof.rating))}${'☆'.repeat(5 - Math.floor(prof.rating))}
+                                </div>
+                                <span>${prof.rating.toFixed(1)} (${prof.reviews} reviews)</span>
+                            </div>
+                            <div class="professional-stats">
+                                <div class="stat">
+                                    <i class="fas fa-clock"></i>
+                                    <span>${prof.experience}</span>
+                                </div>
+                                <div class="stat">
+                                    <i class="fas fa-rupee-sign"></i>
+                                    <span>${prof.hourlyRate}</span>
+                                </div>
+                                <div class="stat">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>2.5 km away</span>
+                                </div>
+                            </div>
+                            <div class="specialties">
+                                <strong>Specialties:</strong> ${prof.specialties.slice(0, 2).join(', ')}
+                                ${prof.specialties.length > 2 ? ` +${prof.specialties.length - 2} more` : ''}
+                            </div>
+                            <div class="availability-indicator">
+                                <i class="fas fa-circle" style="color: var(--success-color);"></i>
+                                <span>Available today</span>
+                            </div>
+                        </div>
+                        <div class="professional-actions">
+                            <button class="btn-outline" onclick="viewProfile('${prof.id}', '${serviceId}')">
+                                <i class="fas fa-user"></i> View Profile
+                            </button>
+                            <button class="btn-outline" onclick="contactProfessional('${prof.id}')">
+                                <i class="fas fa-phone"></i> Call
+                            </button>
+                            <button class="btn-primary" onclick="bookNow('${prof.id}', '${serviceId}')">
+                                <i class="fas fa-calendar"></i> Book Now
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                professionalsList.style.display = 'none';
+                noResults.style.display = 'block';
+                resultCount.textContent = 'Error loading professionals';
+                
+                noResults.innerHTML = `
+                    <div class="text-center p-3">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: var(--error-color); margin-bottom: 1rem;"></i>
+                        <h3>Error loading professionals</h3>
+                        <p>${error.message}</p>
+                        <button class="btn-primary" onclick="renderProfessionals('${serviceId}')">
+                            Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderProfessionalsOld(serviceId) {
+            const professionalsList = document.getElementById('professionalsList');
+            const resultCount = document.getElementById('resultCount');
+            const noResults = document.getElementById('noResults');
+            
+            if (!professionalsList) return;
+            
+            const serviceProfessionals = [];
             
             if (serviceProfessionals.length === 0) {
                 professionalsList.style.display = 'none';
@@ -377,6 +487,12 @@
                 cursor: pointer;
                 transition: var(--transition);
                 color: var(--text-secondary);
+            }
+            
+            .error-state {
+                text-align: center;
+                padding: 3rem;
+                color: var(--error-color);
             }
             
             .btn-icon:hover {
